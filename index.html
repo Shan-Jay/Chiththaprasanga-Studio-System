@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chiththaprasanga Studio Customer Management System</title>
+    <style>
+        h1{
+            text-align: center;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        form {
+            display: grid;
+            gap: 10px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <img src="1234.jpg" alt="">
+    <div class="container">
+        <h1>Chiththaprasanga Studio Customer Management System</h1>
+        
+        <form id="customerForm">
+            <input type="text" id="name" placeholder="Customer Name" required>
+            <input type="tel" id="phone" placeholder="Phone Number" required>
+            <input type="email" id="email" placeholder="Email Address">
+            <select id="sessionType" required>
+                <option value="">Select Session Type</option>
+                <option value="Photoshoot">Photoshoot</option>
+                <option value="Video">Video</option>
+                <option value="Portrait">Portrait</option>
+                <option value="Wedding">Wedding</option>
+                <option value="Other">Other</option>
+            </select>
+            <input type="date" id="sessionDate" required>
+            <input type="number" id="payment" placeholder="Payment Amount" step="0.01" required>
+            <div class="action-buttons">
+                <button type="submit">Register Customer</button>
+                <button type="button" onclick="updateCustomer()">Update Customer</button>
+            </div>
+        </form>
+
+        <table id="customerTable">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Session Type</th>
+                    <th>Date</th>
+                    <th>Payment</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="customerList"></tbody>
+        </table>
+    </div>
+
+    <script>
+        // Customer Management System
+        class CustomerManager {
+            constructor() {
+                this.customers = JSON.parse(localStorage.getItem('customers')) || [];
+                this.currentEditIndex = null;
+                this.renderCustomers();
+            }
+
+            // Add a new customer
+            addCustomer(customer) {
+                this.customers.push(customer);
+                this.saveToLocalStorage();
+                this.renderCustomers();
+            }
+
+            // Update an existing customer
+            updateCustomer(index, updatedCustomer) {
+                this.customers[index] = updatedCustomer;
+                this.saveToLocalStorage();
+                this.renderCustomers();
+                this.currentEditIndex = null;
+            }
+
+            // Delete a customer
+            deleteCustomer(index) {
+                this.customers.splice(index, 1);
+                this.saveToLocalStorage();
+                this.renderCustomers();
+            }
+
+            // Save customers to local storage
+            saveToLocalStorage() {
+                localStorage.setItem('customers', JSON.stringify(this.customers));
+            }
+
+            // Render customers to the table
+            renderCustomers() {
+                const customerList = document.getElementById('customerList');
+                customerList.innerHTML = '';
+
+                this.customers.forEach((customer, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${customer.name}</td>
+                        <td>${customer.phone}</td>
+                        <td>${customer.sessionType}</td>
+                        <td>${customer.sessionDate}</td>
+                        <td>$${customer.payment}</td>
+                        <td>
+                            <button onclick="customerManager.editCustomer(${index})">Edit</button>
+                            <button onclick="customerManager.deleteCustomer(${index})">Delete</button>
+                        </td>
+                    `;
+                    customerList.appendChild(row);
+                });
+            }
+
+            // Prepare customer for editing
+            editCustomer(index) {
+                const customer = this.customers[index];
+                this.currentEditIndex = index;
+
+                document.getElementById('name').value = customer.name;
+                document.getElementById('phone').value = customer.phone;
+                document.getElementById('email').value = customer.email || '';
+                document.getElementById('sessionType').value = customer.sessionType;
+                document.getElementById('sessionDate').value = customer.sessionDate;
+                document.getElementById('payment').value = customer.payment;
+            }
+        }
+
+        // Initialize Customer Manager
+        const customerManager = new CustomerManager();
+
+        // Form submission handler
+        document.getElementById('customerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const customer = {
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                sessionType: document.getElementById('sessionType').value,
+                sessionDate: document.getElementById('sessionDate').value,
+                payment: document.getElementById('payment').value
+            };
+
+            if (customerManager.currentEditIndex !== null) {
+                customerManager.updateCustomer(customerManager.currentEditIndex, customer);
+            } else {
+                customerManager.addCustomer(customer);
+            }
+
+            // Reset form
+            this.reset();
+        });
+
+        // Update customer function
+        function updateCustomer() {
+            if (customerManager.currentEditIndex !== null) {
+                const customer = {
+                    name: document.getElementById('name').value,
+                    phone: document.getElementById('phone').value,
+                    email: document.getElementById('email').value,
+                    sessionType: document.getElementById('sessionType').value,
+                    sessionDate: document.getElementById('sessionDate').value,
+                    payment: document.getElementById('payment').value
+                };
+                customerManager.updateCustomer(customerManager.currentEditIndex, customer);
+                document.getElementById('customerForm').reset();
+                customerManager.currentEditIndex = null;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chiththaprasanga Studio Billing System</title>
+    <style>
+        h1{
+            text-align: center;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        .bill-preview {
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .installment-section {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printableInvoice, #printableInvoice * {
+                visibility: visible;
+            }
+            #printableInvoice {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <img src="333.jpg" alt="">
+    <div class="container">
+        <h1>Chiththaprasanga Studio Billing System</h1>
+        
+        <div class="grid-container">
+            <!-- Customer Search Section -->
+            <div>
+                <h2>Customer Search</h2>
+                <input type="text" id="customerSearch" placeholder="Search by Name or Phone">
+                <div id="searchResults"></div>
+            </div>
+
+            <!-- Bill Generation Section -->
+            <div>
+                <h2>Bill Generation</h2>
+                <form id="billForm">
+                    <input type="text" id="customerName" placeholder="Customer Name" readonly>
+                    <input type="text" id="customerPhone" placeholder="Phone Number" readonly>
+                    
+                    <select id="serviceType">
+                        <option value="">Select Service</option>
+                        <option value="Photoshoot">Photoshoot</option>
+                        <option value="Video">Video Shooting</option>
+                        <option value="Portrait">Portrait Session</option>
+                        <option value="Wedding">Wedding Photography</option>
+                    </select>
+                    
+                    <input type="number" id="totalAmount" placeholder="Total Amount" required>
+                    <input type="number" id="initialPayment" placeholder="Initial Payment" required>
+                    
+                    <!-- New Date Selection -->
+                    <label for="invoiceDate">Invoice Date:</label>
+                    <input type="date" id="invoiceDate" required>
+                    
+                    <div class="installment-section">
+                        <h3>Installment Plan</h3>
+                        <select id="installmentPlan">
+                            <option value="1">Full Payment</option>
+                            <option value="2">2 Installments</option>
+                            <option value="3">3 Installments</option>
+                            <option value="4">4 Installments</option>
+                            <option value="6">6 Installments</option>
+                        </select>
+                    </div>
+                    
+                    <button type="button" onclick="generateBill()">Generate Bill</button>
+                    <button type="button" onclick="printBill()">Print Bill</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Bill Preview Section -->
+        <div id="printableInvoice" class="bill-preview">
+            <h2>Invoice</h2>
+            <div id="invoiceDetails"></div>
+            <div id="installmentSchedule"></div>
+        </div>
+
+        <!-- Payment History Section -->
+        <div>
+            <h2>Payment History</h2>
+            <table id="paymentHistoryTable">
+                <thead>
+                    <tr>
+                        <th>Invoice Number</th>
+                        <th>Date</th>
+                        <th>Amount Paid</th>
+                        <th>Remaining Balance</th>
+                    </tr>
+                </thead>
+                <tbody id="paymentHistoryBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        class BillingSystem {
+            constructor() {
+                this.customers = JSON.parse(localStorage.getItem('customers')) || [];
+                this.invoices = JSON.parse(localStorage.getItem('invoices')) || [];
+                this.selectedCustomer = null;
+            }
+
+            // Format currency to LKR
+            formatCurrency(amount) {
+                return new Intl.NumberFormat('en-LK', {
+                    style: 'currency',
+                    currency: 'LKR'
+                }).format(amount);
+            }
+
+            // Search customers
+            searchCustomers(query) {
+                const results = this.customers.filter(customer => 
+                    customer.name.toLowerCase().includes(query.toLowerCase()) || 
+                    customer.phone.includes(query)
+                );
+                return results;
+            }
+
+            // Generate unique invoice number
+            generateInvoiceNumber() {
+                const date = new Date();
+                const timestamp = date.getTime();
+                return `INV-${timestamp}`;
+            }
+
+            // Create installment schedule
+            createInstallmentSchedule(totalAmount, initialPayment, installments, baseDate) {
+                const remainingBalance = totalAmount - initialPayment;
+                const installmentAmount = remainingBalance / installments;
+                const schedule = [];
+
+                for (let i = 1; i <= installments; i++) {
+                    const installmentDate = new Date(baseDate);
+                    installmentDate.setMonth(baseDate.getMonth() + i);
+                    
+                    schedule.push({
+                        installmentNumber: i,
+                        dueDate: installmentDate.toISOString().split('T')[0],
+                        amount: installmentAmount.toFixed(2),
+                        paid: false
+                    });
+                }
+
+                return schedule;
+            }
+
+            // Save invoice
+            saveInvoice(invoice) {
+                this.invoices.push(invoice);
+                localStorage.setItem('invoices', JSON.stringify(this.invoices));
+            }
+
+            // Retrieve payment history for a customer
+            getPaymentHistory(customerPhone) {
+                return this.invoices.filter(invoice => invoice.customerPhone === customerPhone);
+            }
+        }
+
+        const billingSystem = new BillingSystem();
+
+        // Set default date to today
+        document.getElementById('invoiceDate').valueAsDate = new Date();
+
+        // Customer Search Functionality
+        document.getElementById('customerSearch').addEventListener('input', function() {
+            const searchResults = document.getElementById('searchResults');
+            searchResults.innerHTML = '';
+            
+            if (this.value.length > 2) {
+                const results = billingSystem.searchCustomers(this.value);
+                results.forEach(customer => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.textContent = `${customer.name} - ${customer.phone}`;
+                    resultDiv.addEventListener('click', () => {
+                        document.getElementById('customerName').value = customer.name;
+                        document.getElementById('customerPhone').value = customer.phone;
+                        searchResults.innerHTML = '';
+                    });
+                    searchResults.appendChild(resultDiv);
+                });
+            }
+        });
+
+        // Generate Bill
+        function generateBill() {
+            const customerName = document.getElementById('customerName').value;
+            const customerPhone = document.getElementById('customerPhone').value;
+            const serviceType = document.getElementById('serviceType').value;
+            const totalAmount = parseFloat(document.getElementById('totalAmount').value);
+            const initialPayment = parseFloat(document.getElementById('initialPayment').value);
+            const installmentPlan = document.getElementById('installmentPlan').value;
+            const invoiceDate = new Date(document.getElementById('invoiceDate').value);
+
+            if (!customerName || !serviceType || !totalAmount) {
+                alert('Please fill all required fields');
+                return;
+            }
+
+            const invoiceNumber = billingSystem.generateInvoiceNumber();
+            const installmentSchedule = billingSystem.createInstallmentSchedule(
+                totalAmount, 
+                initialPayment, 
+                parseInt(installmentPlan),
+                invoiceDate
+            );
+
+            const invoice = {
+                invoiceNumber,
+                customerName,
+                customerPhone,
+                serviceType,
+                totalAmount,
+                initialPayment,
+                remainingBalance: totalAmount - initialPayment,
+                installmentSchedule,
+                date: invoiceDate.toISOString().split('T')[0]
+            };
+
+            // Display Invoice Details
+            const invoiceDetails = document.getElementById('invoiceDetails');
+            invoiceDetails.innerHTML = `
+                <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
+                <p><strong>Customer:</strong> ${customerName}</p>
+                <p><strong>Phone:</strong> ${customerPhone}</p>
+                <p><strong>Service:</strong> ${serviceType}</p>
+                <p><strong>Total Amount:</strong> ${billingSystem.formatCurrency(totalAmount)}</p>
+                <p><strong>Initial Payment:</strong> ${billingSystem.formatCurrency(initialPayment)}</p>
+                <p><strong>Remaining Balance:</strong> ${billingSystem.formatCurrency(totalAmount - initialPayment)}</p>
+                <p><strong>Invoice Date:</strong> ${invoiceDate.toLocaleDateString()}</p>
+            `;
+
+            // Display Installment Schedule
+            const installmentScheduleDiv = document.getElementById('installmentSchedule');
+            installmentScheduleDiv.innerHTML = '<h3>Installment Schedule</h3>';
+            const scheduleTable = document.createElement('table');
+            scheduleTable.innerHTML = `
+                <tr>
+                    <th>Installment</th>
+                    <th>Due Date</th>
+                    <th>Amount</th>
+                </tr>
+                ${installmentSchedule.map(installment => `
+                    <tr>
+                        <td>${installment.installmentNumber}</td>
+                        <td>${installment.dueDate}</td>
+                        <td>${billingSystem.formatCurrency(installment.amount)}</td>
+                    </tr>
+                `).join('')}
+            `;
+            installmentScheduleDiv.appendChild(scheduleTable);
+
+            // Save Invoice
+            billingSystem.saveInvoice(invoice);
+
+            // Update Payment History
+            updatePaymentHistory(customerPhone);
+        }
+
+        // Update Payment History
+        function updatePaymentHistory(customerPhone) {
+            const paymentHistory = billingSystem.getPaymentHistory(customerPhone);
+            const paymentHistoryBody = document.getElementById('paymentHistoryBody');
+            paymentHistoryBody.innerHTML = '';
+
+            paymentHistory.forEach(invoice => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${invoice.invoiceNumber}</td>
+                    <td>${invoice.date}</td>
+                    <td>${billingSystem.formatCurrency(invoice.initialPayment)}</td>
+                    <td>${billingSystem.formatCurrency(invoice.remainingBalance)}</td>
+                `;
+                paymentHistoryBody.appendChild(row);
+            });
+        }
+
+        // Print Bill
+        function printBill() {
+            window.print();
+        }
+    </script>
+</body>
+</html>
